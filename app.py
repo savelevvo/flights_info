@@ -4,7 +4,7 @@ from parser import parse_data
 app = Flask('flights_info')
 
 
-def get_flights(_from, _to: str) -> dict:
+def get_flights(_from, _to: str) -> tuple:
     return parse_data()
 
 
