@@ -1,9 +1,11 @@
 from flask import Flask, request, jsonify, abort
 from parser import parse_data
+from functools import lru_cache
 
 app = Flask('flights_info')
 
 
+@lru_cache()
 def get_flights(_from, _to: str) -> tuple:
     return parse_data()
 

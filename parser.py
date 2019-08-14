@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET
-from collections import defaultdict
+from datetime import datetime, timedelta
 
 
 def parse_data() -> tuple:
@@ -12,39 +12,99 @@ def parse_data() -> tuple:
 
     tree = ET.parse('xml/RS_Via-3.xml')
     root = tree.getroot()
-    full_flights_info = dict()
-    for_search = dict()
-    values = defaultdict(int)
-
     flights = root.find('PricedItineraries')
+    full_flights_info, for_search = dict(), dict()
+
     for _id, flight in enumerate(flights):
-        # _onward = flight.findall("./OnwardPricedItinerary//Flight")
-        # _return = flight.findall("./ReturnPricedItinerary//Flight")
-        flight_segments = flight.findall(".//Flight")
+        onward_flights = flight.findall("./OnwardPricedItinerary//Flight")
+        return_flights = flight.findall("./ReturnPricedItinerary//Flight")
+        # flight_segments = flight.findall(".//Flight")
         total_price = float(flight.find("./Pricing//*[@ChargeType='TotalAmount']").text)
+        onward_segments = list()
+        flight_summary = dict()
 
-        full_flights_info[_id]['total_price'] = total_price
-        for flight_segment in flight_segments:
-            source = ''
-            dest = ''
-            full_flights_info[_id] = {
-                'source': '',
-                'dest': '',
-                'intermid': '',
-                'carrier': '',
-                'flight_n': 0,
-                'dep_time': None,
-                'arr_time': None
+        current_min_price = total_price
+        current_max_price = 0
+        current_min_time = timedelta(days=99)
+        current_max_time = timedelta(seconds=0)
+        segment_time = timedelta(seconds=0)
+        end_time = datetime(year=9999, month=1, day=1)
+        total_time = timedelta(seconds=0)
+
+        for flight_segment in onward_flights:
+            carrier = flight_segment.find('Carrier').text
+            flight_n = int(flight_segment.find('FlightNumber').text)
+            source = flight_segment.find('Source').text
+            destination = flight_segment.find('Destination').text
+            departure = datetime.strptime(flight_segment.find('DepartureTimeStamp').text, "%Y-%m-%dT%H%M")
+            arrival = datetime.strptime(flight_segment.find('ArrivalTimeStamp').text, "%Y-%m-%dT%H%M")
+
+            segment = {'carrier': carrier, 'flight_number': flight_n, 'source': source, 'destination': destination,
+                       'departure': departure, 'arrival': arrival}
+            onward_segments.append(segment)
+
+            ##############################
+
+            segment_time += arrival - departure
+            if end_time.year == 9999:
+                end_time = arrival
+            else:
+                total_time = segment_time + (departure - end_time)
+
+            route = f'{source}-{destination}'
+            min_price = min(total_price, current_min_price)
+            current_min_price = min_price
+
+            max_price = max(total_price, current_max_price)
+            current_max_price = max_price
+
+            shortest = min(total_time, current_min_time)
+            current_min_time = shortest
+
+            longest = max(total_time, current_max_time)
+            current_max_time = longest
+
+            optimal = None
+
+            flight_summary = {
+                route: {
+                    'ids': _id,
+                    'min_price': {'id': _id, 'val': min_price},
+                    'max_price': {'id': _id, 'val': max_price},
+                    'shortest': {'id': _id, 'val': shortest},
+                    'longest': {'id': _id, 'val': longest},
+                    'optimal': optimal
+                }
             }
 
-            route_name = f'{source}-{dest}'
-            for_search[route_name]['ids'] += _id
-            for_search[route_name] = {
-                'min_price': {'id': values['min_price']['id'], 'val': values['min_price']['val']},
-                'max_price': {'id': values['max_price']['id'], 'val': values['max_price']['val']},
-                'short': {'id': values['short']['id'], 'val': values['short']['val']},
-                'long': {'id': values['long']['id'], 'val': values['long']['val']},
-                'optimal_id': values['optimal_id']
-            }
+        full_flights_info[_id] = {'onward': onward_segments, 'total_price': total_price}
 
+        for_search.update(flight_summary)
+    print(for_search)
     return full_flights_info, for_search
+
+parse_data()
+
+
+"""
+
+for_search = {
+    'SVO-JFK': {
+        'ids': [1, 3, 4],
+        'min_price': {'id': 3, 'val': 120},
+        'max_price': {'id': 1, 'val': 199},
+        'shortest': {'id': 1, 'val': '10h'},
+        'longest': {'id': 3, 'val': '14h'},
+        'optimal_id': 2
+    },
+    '': {}
+}
+
+full_flights_info = {
+    1: {...},
+    2: {'onward': [{'from': '', 'to': ''}, {'from': '', 'to': ''}],
+        'return': [{'from': '', 'to': ''}, {'from': '', 'to': ''}],
+        'total_price': 199}
+}
+
+"""
