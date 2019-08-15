@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 def parse_data() -> tuple:
@@ -23,18 +23,13 @@ def parse_data() -> tuple:
         total_price = float(flight.find("./Pricing//*[@ChargeType='TotalAmount']").text)
 
         onward_segments = list()
-        # flight_summary = dict()
-
-        # current_min_price = total_price
-        # current_max_price = 0
-        # current_min_time = timedelta(days=99)
-        # current_max_time = timedelta(seconds=0)
-        # segment_time = timedelta(seconds=0)
-        # end_time = datetime(year=9999, month=1, day=1)
-        # total_time = timedelta(seconds=0)
 
         first_airport = onward_flights[0].find('Source').text
         last_airport = onward_flights[-1].find('Destination').text
+
+        first_length = datetime.strptime(onward_flights[0].find('DepartureTimeStamp').text, "%Y-%m-%dT%H%M")
+        last_length = datetime.strptime(onward_flights[-1].find('ArrivalTimeStamp').text, "%Y-%m-%dT%H%M")
+        total_length = int(((last_length - first_length).total_seconds()) / 60)  # minutes
 
         for flight_segment in onward_flights:
             carrier = flight_segment.find('Carrier').text
@@ -48,37 +43,6 @@ def parse_data() -> tuple:
                        'departure': departure, 'arrival': arrival}
             onward_segments.append(segment)
 
-            ##############################
-
-            # segment_time += arrival - departure
-            # if end_time.year == 9999:
-            #     end_time = arrival
-            # else:
-            #     total_time = segment_time + (departure - end_time)
-            # min_price = min(total_price, current_min_price)
-            # current_min_price = min_price
-            #
-            # max_price = max(total_price, current_max_price)
-            # current_max_price = max_price
-            #
-            # shortest = min(total_time, current_min_time)
-            # current_min_time = shortest
-            #
-            # longest = max(total_time, current_max_time)
-            # current_max_time = longest
-            #
-            # optimal = None
-            # flight_summary = {
-            #     route: {
-            #         'ids': _id,
-            #         'min_price': {'id': _id, 'val': min_price},
-            #         'max_price': {'id': _id, 'val': max_price},
-            #         'shortest': {'id': _id, 'val': shortest},
-            #         'longest': {'id': _id, 'val': longest},
-            #         'optimal': optimal
-            #     }
-            # }
-
         route = f'{first_airport}-{last_airport}'
 
         # get all flight ids for current flight
@@ -90,7 +54,11 @@ def parse_data() -> tuple:
         if total_price > for_search[route].setdefault('max_price', {'id': _id, 'val': total_price})['val']:
             for_search[route]['max_price'] = {'id': _id, 'val': total_price}
 
-
+        # get min/max time
+        if total_length < for_search[route].setdefault('min_length', {'id': _id, 'val': total_length})['val']:
+            for_search[route]['min_length'] = {'id': _id, 'val': total_length}
+        if total_length > for_search[route].setdefault('max_length', {'id': _id, 'val': total_length})['val']:
+            for_search[route]['max_length'] = {'id': _id, 'val': total_length}
 
         full_flights_info[_id] = {'onward': onward_segments, 'total_price': total_price}
 
