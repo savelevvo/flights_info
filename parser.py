@@ -20,16 +20,14 @@ def parse_data(round_trip=False) -> tuple:
     _prices, _times, _optimals = dict(), dict(), dict()
 
     for _id, flight in enumerate(flights):
+        onward_segments, return_segments = list(), list()
+        total_length, prev_arrival = defaultdict(int), defaultdict(int)
+
         onward_flights = flight.findall("./OnwardPricedItinerary//Flight")
         return_flights = flight.findall("./ReturnPricedItinerary//Flight")
-
-        onward_segments, return_segments = list(), list()
         total_price = float(flight.find("./Pricing//*[@ChargeType='TotalAmount']").text)
-
         first_airport = onward_flights[0].find('Source').text
         last_airport = onward_flights[-1].find('Destination').text
-
-        total_length, prev_arrival = defaultdict(int), defaultdict(int)
 
         for direction, value in {'onward': onward_flights, 'return': return_flights}.items():
             for flight_segment in value:
@@ -65,19 +63,19 @@ def parse_data(round_trip=False) -> tuple:
 
     # assert records in xml are sorted by price from min to max
     # sort time from min to max
-    for _route in _times:
-        _times[_route] = dict(sorted(_times[_route].items(), key=lambda v: v[1]))
+    for route in _times:
+        _times[route] = dict(sorted(_times[route].items(), key=lambda v: v[1]))
 
     # find optimal id
-    for _route in _prices:
-        for _id, _ in _prices[_route].items():
-            index_price = list(_prices[_route].keys()).index(_id)
-            index_time = list(_times[_route].keys()).index(_id)
-            _optimals.setdefault(_route, []).append({_id: index_price + index_time})
+    for route in _prices:
+        for _id, _ in _prices[route].items():
+            index_price = list(_prices[route].keys()).index(_id)
+            index_time = list(_times[route].keys()).index(_id)
+            _optimals.setdefault(route, []).append({_id: index_price + index_time})
 
-    for _route in summary_info:
-        price_values = list(_prices[_route].items())
-        time_values = list(_times[_route].items())
+    for route in summary_info:
+        price_values = list(_prices[route].items())
+        time_values = list(_times[route].items())
         value_map = {
             'min_price': price_values[0],
             'max_price': price_values[-1],
@@ -85,8 +83,8 @@ def parse_data(round_trip=False) -> tuple:
             'max_length': time_values[-1]
         }
         for k, v in value_map.items():
-            summary_info[_route].setdefault(k, dict(zip(('id', 'val'), v)))
-        optimal_id = next(iter(_optimals[_route][0]))
-        summary_info[_route].setdefault('optimal_id', optimal_id)
+            summary_info[route].setdefault(k, dict(zip(('id', 'val'), v)))
+        optimal_id = next(iter(_optimals[route][0]))
+        summary_info[route].setdefault('optimal_id', optimal_id)
 
     return full_info, summary_info
