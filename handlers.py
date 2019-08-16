@@ -21,7 +21,7 @@ def top(route, key, round_trip=False):
     route = route.upper()
 
     if key == 'optimal':
-        flight_id = summary_info.get(route, {}).get('optimal_id', {})
+        flight_id = summary_info.get(route, {}).get('optimal_id')
     else:
         flight_id = summary_info.get(route, {}).get(key, {}).get('id')
     return full_info.get(flight_id, {})
