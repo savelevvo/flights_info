@@ -3,7 +3,7 @@ from datetime import datetime
 from collections import defaultdict
 
 
-def parse_data() -> tuple:
+def parse_data(round_trip=False) -> tuple:
     """
     Parses xml file and stores flights info in two hash tables:
     full_info: hash table containing full description of a flight
@@ -11,7 +11,8 @@ def parse_data() -> tuple:
     :return: tuple of above tables
     """
 
-    tree = ET.parse('xml/RS_Via-3.xml')
+    filename = 'RS_Via-3.xml' if round_trip else 'RS_ViaOW.xml'
+    tree = ET.parse(f'xml/{filename}')
     root = tree.getroot()
     flights = root.find('PricedItineraries')
 
@@ -75,11 +76,13 @@ def parse_data() -> tuple:
             _optimals.setdefault(_route, []).append({_id: index_price + index_time})
 
     for _route in summary_info:
+        price_values = list(_prices[_route].items())
+        time_values = list(_times[_route].items())
         value_map = {
-            'min_price': list(_prices[_route].items())[0],
-            'max_price': list(_prices[_route].items())[-1],
-            'min_length': list(_times[_route].items())[0],
-            'max_length': list(_times[_route].items())[-1]
+            'min_price': price_values[0],
+            'max_price': price_values[-1],
+            'min_length': time_values[0],
+            'max_length': time_values[-1]
         }
         for k, v in value_map.items():
             summary_info[_route].setdefault(k, dict(zip(('id', 'val'), v)))
